@@ -1,25 +1,34 @@
 import streamlit as st
-from perplexipy import PerplexityClient
-import os
+import requests
 
-# Obtener la clave de la API desde los secretos de Streamlit
-api_key = st.secrets["perplexity"]["api_key"]
+# Accede a la clave de API de Perplexity desde los secretos
+API_KEY = st.secrets["perplexity"]["api_key"]
 
-# Inicializar el cliente de Perplexity
-client = PerplexityClient(key=api_key)
+def obtener_datos_titulo(titulo):
+    # Aquí haces la solicitud a la API de Perplexity
+    url = f"https://api.perplexity.ai/v1/search?query={titulo}&api_key={API_KEY}"
+    response = requests.get(url)
+    return response.json()
 
-st.title("Análisis de Nicho para tu Libro en Amazon")
+def analizar_datos(datos):
+    # Procesar los datos obtenidos de la API
+    indice_competencia = datos.get('competencia', 0)
+    ganancias_estimadas = datos.get('ganancias', 0)
+    numero_competidores = datos.get('competidores', 0)
+    return indice_competencia, ganancias_estimadas, numero_competidores
 
-# Entrada del usuario para la palabra clave o título
-keyword = st.text_input("Introduce una palabra clave o título:")
+# Interfaz de usuario
+st.title("Buscador de Nichos para Libros en Amazon")
 
-if keyword:
-    # Realizar la consulta a la API de Perplexity
-    query = f"Análisis de mercado para libros en Amazon sobre '{keyword}': " \
-            f"índice de competencia, número de búsquedas mensuales, " \
-            f"ganancias estimadas y número de competidores."
-    response = client.query(query)
-
-    # Mostrar los resultados
-    st.subheader("Resultados del Análisis:")
-    st.write(response)
+titulo = st.text_input("Introduce un título o palabra clave:")
+if st.button("Buscar"):
+    if titulo:
+        datos = obtener_datos_titulo(titulo)
+        indice_competencia, ganancias_estimadas, numero_competidores = analizar_datos(datos)
+        
+        st.subheader("Resultados:")
+        st.write(f"Índice de Competencia: {indice_competencia}")
+        st.write(f"Ganancias Mensuales Estimadas: ${ganancias_estimadas}")
+        st.write(f"Número de Competidores: {numero_competidores}")
+    else:
+        st.warning("Por favor, introduce un título o palabra clave para buscar.")
