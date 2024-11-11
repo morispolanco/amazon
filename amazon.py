@@ -1,17 +1,18 @@
 import streamlit as st
 import requests
 
-# Accede a la clave de API de Serper desde los secretos
-API_KEY = st.secrets["serper"]["api_key"]
+# Accede a la clave de API de OpenRouter desde los secretos
+OPENROUTER_API_KEY = st.secrets["openrouter"]["api_key"]
 
-def obtener_datos_titulo(titulo):
-    url = "https://google.serper.dev/search"
+def obtener_respuesta_openrouter(mensaje):
+    url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
-        "X-API-KEY": API_KEY,
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}"
     }
     data = {
-        "q": titulo
+        "model": "openai/gpt-4o-mini",
+        "messages": [{"role": "user", "content": mensaje}]
     }
     
     try:
@@ -28,26 +29,19 @@ def obtener_datos_titulo(titulo):
         st.error(f"Error al decodificar la respuesta JSON: {json_err}")
         return {}
 
-def analizar_datos(datos):
-    if 'organic' in datos:
-        competencia = datos['organic'][0].get('competition', 'N/A')  # Ajusta según la estructura de la respuesta
-        ganancias_estimadas = datos['organic'][0].get('estimated_earnings', 'N/A')
-        numero_competidores = datos['organic'][0].get('competitors', 'N/A')
-        return competencia, ganancias_estimadas, numero_competidores
-    return 'N/A', 'N/A', 'N/A'
-
 # Interfaz de usuario
-st.title("Buscador de Nichos para Libros en Amazon")
+st.title("Asistente de OpenRouter")
 
-titulo = st.text_input("Introduce un título o palabra clave:")
-if st.button("Buscar"):
-    if titulo:
-        datos = obtener_datos_titulo(titulo)
-        competencia, ganancias_estimadas, numero_competidores = analizar_datos(datos)
+mensaje_usuario = st.text_input("Escribe tu mensaje:")
+if st.button("Enviar"):
+    if mensaje_usuario:
+        respuesta = obtener_respuesta_openrouter(mensaje_usuario)
         
-        st.subheader("Resultados:")
-        st.write(f"Índice de Competencia: {competencia}")
-        st.write(f"Ganancias Mensuales Estimadas: ${ganancias_estimadas}")
-        st.write(f"Número de Competidores: {numero_competidores}")
+        if 'choices' in respuesta and len(respuesta['choices']) > 0:
+            contenido_respuesta = respuesta['choices'][0]['message']['content']
+            st.subheader("Respuesta del Asistente:")
+            st.write(contenido_respuesta)
+        else:
+            st.error("No se pudo obtener una respuesta válida.")
     else:
-        st.warning("Por favor, introduce un título o palabra clave para buscar.")
+        st.warning("Por favor, introduce un mensaje para enviar.")
