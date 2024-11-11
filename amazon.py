@@ -1,21 +1,40 @@
 import streamlit as st
 import requests
 
-# Accede a la clave de API de Perplexity desde los secretos
-API_KEY = st.secrets["perplexity"]["api_key"]
+# Accede a la clave de API de Serper desde los secretos
+API_KEY = st.secrets["serper"]["api_key"]
 
 def obtener_datos_titulo(titulo):
-    # Aquí haces la solicitud a la API de Perplexity
-    url = f"https://api.perplexity.ai/v1/search?query={titulo}&api_key={API_KEY}"
-    response = requests.get(url)
-    return response.json()
+    url = "https://google.serper.dev/search"
+    headers = {
+        "X-API-KEY": API_KEY,
+        "Content-Type": "application/json"
+    }
+    data = {
+        "q": titulo
+    }
+    
+    try:
+        response = requests.post(url, headers=headers, json=data)
+        response.raise_for_status()  # Lanza un error para códigos de estado HTTP 4xx o 5xx
+        return response.json()
+    except requests.exceptions.HTTPError as http_err:
+        st.error(f"Error HTTP: {http_err}")
+        return {}
+    except requests.exceptions.RequestException as err:
+        st.error(f"Error de solicitud: {err}")
+        return {}
+    except ValueError as json_err:
+        st.error(f"Error al decodificar la respuesta JSON: {json_err}")
+        return {}
 
 def analizar_datos(datos):
-    # Procesar los datos obtenidos de la API
-    indice_competencia = datos.get('competencia', 0)
-    ganancias_estimadas = datos.get('ganancias', 0)
-    numero_competidores = datos.get('competidores', 0)
-    return indice_competencia, ganancias_estimadas, numero_competidores
+    if 'organic' in datos:
+        competencia = datos['organic'][0].get('competition', 'N/A')  # Ajusta según la estructura de la respuesta
+        ganancias_estimadas = datos['organic'][0].get('estimated_earnings', 'N/A')
+        numero_competidores = datos['organic'][0].get('competitors', 'N/A')
+        return competencia, ganancias_estimadas, numero_competidores
+    return 'N/A', 'N/A', 'N/A'
 
 # Interfaz de usuario
 st.title("Buscador de Nichos para Libros en Amazon")
@@ -24,10 +43,10 @@ titulo = st.text_input("Introduce un título o palabra clave:")
 if st.button("Buscar"):
     if titulo:
         datos = obtener_datos_titulo(titulo)
-        indice_competencia, ganancias_estimadas, numero_competidores = analizar_datos(datos)
+        competencia, ganancias_estimadas, numero_competidores = analizar_datos(datos)
         
         st.subheader("Resultados:")
-        st.write(f"Índice de Competencia: {indice_competencia}")
+        st.write(f"Índice de Competencia: {competencia}")
         st.write(f"Ganancias Mensuales Estimadas: ${ganancias_estimadas}")
         st.write(f"Número de Competidores: {numero_competidores}")
     else:
